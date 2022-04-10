@@ -55,3 +55,57 @@ ph2 = p.adjust(pval2, method="holm")
 c(sum(pval2 < 0.05), sum(pj2 < 0.05), sum(ph2 < 0.05))
 ## 순수 pvalue는 매우 많이 기각, Bonferroni는 매우 덜 기각(보수적), Holm's는 적당히!
 
+# Benjamini-Hochberg procedure
+## Method to conntrol FDR
+## Error를 컨트롤하는 것 보다는 Siginificant discovery에 집중!
+## 굉장히 Classic 하며 한계가 조금은 존재하는 method, 하지만 이해하기에는 쉬움
+data(golub, package="multtest")
+golubFactor = factor(golub.cl, levels=0:1, labels=c("ALL", "AML"))
+
+pval = NULL
+m = nrow(golub)
+for (i in 1:m){
+	pval[i] = t.test(golub[i, ] ~ golubFactor)$p.val
+}
+
+pj = p.adjust(pval, method="bonferroni")
+pBH = p.adjust(pval, method="BH")		# Benjamini-Hochberg
+c(sum(pj < 0.05), sum(pBH < 0.05))	# more reject H0
+
+q = 0.05
+poo = sort(pval)
+wh = which(poo < q*(1:m)/m)
+whh = 1:max(wh)
+
+plot(poo, pch=20, ylab="P-values", xlab="Genes", main="")
+points(whh, poo[whh], col=4, pch=20)
+abline(a=0, b=q/m, col=2)
+abline(h=q/m, col="darkgreen")
+
+top = 1000
+poot = poo[1:top]
+
+plot(poot, pch=20, ylab="P-values", xlab="Genes", main="")
+points(whh, poot[whh], col=4, pch=20)
+abline(a=0, b=q/m, col=2)
+abline(h=q/m, col="darkgreen")
+
+# Permutation to Compute p-value
+install.packages("ISLR2")
+library(ISLR2)
+data(Khan)
+
+?Khan
+str(Khan)
+attach(Khan)
+
+x = rbind(xtrain, xtest)
+y = c(as.numeric(ytrain), as.numeric(ytest))
+dim(x)
+table(y)
+
+x = as.matrix(x)
+x1 = x[which(y==2), ]
+x2 = x[which(y==4), ]
+n1 = nrow(x1)
+n2 = nrow(x2)
