@@ -12,13 +12,19 @@ for (i in 1:m){
 sum(pval < 0.05)    # Type 1 Error 가능성 다수 존재
 sum(pval < 0.05/m)  # Type 1 Error 가능성 control
 
-pj = p.adjust(pval, method="bonferroni")  # Bonferroni adjustment p-value
-sum(pj < 0.05)  # = sum(pval < 0.05/m)
-
 top = 20
 oo = order(pval)
 oot = oo[1:top]
 data.frame(gene=golub.gnames[oot, 3], pvalue=pval[oot])
+
+
+pj = p.adjust(pval, method="bonferroni")  # Bonferroni adjustment p-value
+sum(pj < 0.05)  # = sum(pval < 0.05/m)
+
+top = sum(pj < 0.05)
+oo = order(pval)
+oot = oo[1:top]
+data.frame(gene=golub.gnames[oot, 3], pvalue=pval[oot], adj.pvalue=pj[oot])
 
 par(mfrow=c(1, 2))
 hist(pval, col="orange", xlab="", main="Un-adjusted p-values")
@@ -26,7 +32,7 @@ hist(pj, col="purple", xlab="", main="Adjusted p-values")
 
 par(mfrow=c(1, 1))
 plot(-log10(pval), type="p", pch=20, col="red", xlab="gene")
-abline(h=-log10(0.05/m), lty=2) # 스케일링을 통해 Type 1 error 가능성 확인
+abline(h=-log10(0.05/m), lty=2) # 스케일링을 통해 Type 1 error 가능성 확인 (검은선 위로 Reject)
 
 ## Bonferroni Adjustment는 귀무가설의 기각에 있어 매우 보수적인 메소드라는 단점이 존재
 ## 매우 Significant 하지 않은 변수는 귀무가설을 기각하지 못한다 -> 유의미한 변수를 많이 끌어내기가 힘듬
@@ -119,7 +125,7 @@ t.out$statistic
 t.out$p.value	# reject H0 -> 두 집단간의 차이가 존재한다 (p-value가 아슬아슬하긴 함 = 차이가 있지만 크진 않을수도?)
 
 set.seed(1)
-B = 1000
+B = 10000
 T = rep(NA, B)
 for (j in 1:B) {	# permutation test
 	data = sample(c(x1[, k], x2[, k]))
@@ -131,7 +137,7 @@ mean((abs(T) >= abs(t.out$statistic)))		# t-test의 p-value값과 거의 비슷�
 hist(T, breaks=100, xlim=c(-4.2, 4.2), main="", xlab="Null Distribution of Test Statistics", col=7)	# under H0에서의 t분포 시각화
 x0 = seq(-4.2, 4.2, len=1000)
 y0 = dt(seq(-4.2, 4.2, len=1000), df=(n1+n2-2))
-lines(x0, y0*100, col=2, lwd=3)	# PPT는 y0*1000인데 오타? 
+lines(x0, y0*1000, col=2, lwd=3)	
 
 TT = t.out$statistic
 abline(v=-TT, col=4, lty=2, lwd=2)
@@ -164,7 +170,7 @@ mean((abs(T) >= abs(t.out$statistic)))	# 정규성을 만족할 때와 비교했
 hist(T, breaks=100, xlim=c(-2.9, 2.9), main="", xlab="Null Distribution of Test Statistic", col=7)	# bimodel(봉우리 두개 형태)
 x0 = seq(-2.9, 2.9, len=1000)
 y0 = dt(seq(-2.9, 2.9, len=1000), df=(n1 + n2 -2))
-lines(x0, y0*100, col=2, lwd=3)
+lines(x0, y0*1000, col=2, lwd=3)
 
 TT = t.out$statistic
 abline(v=-TT, col=4, lty=2, lwd=2)
