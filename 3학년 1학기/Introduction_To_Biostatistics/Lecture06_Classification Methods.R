@@ -110,3 +110,199 @@ pred = prediction(yprob, true)
 perf = performance(pred, "tpr", "fpr")
 plot(perf, lwd=2, col="blue")
 performance(pred, "auc")@y.values
+
+# Example of Classification Trees
+## Example : Optimal gene expression thresholds
+install.packages(c("rpart", "rpart.plot"))
+library(rpart)
+library(rpart.plot)
+
+n = 10
+factor = factor(c(rep(1, n), rep(2, n), rep(3, n)))
+levels(factor) = c("ALL1", "ALL2", "AML")
+factor
+
+set.seed(123)
+sigma = 0.5
+geneA = c(rnorm(n, 0, sigma), rnorm(n, 2, sigma), rnorm(n, 4, sigma))
+
+tapply(geneA, factor, range) # tapply : data를 factor별로 apply하는 함수
+boxplot(geneA ~ factor, cex.lab=1.5, main=NULL, boxwex=0.3,
+        col=c("lightblue", "orange", "lightgreen"),
+        xlab="Type of leukemia", ylab="Gene expression")
+
+data = data.frame(factor, geneA)
+rpartFit = rpart(factor ~ geneA, method="class", data=data) # method="class" : classification
+prp(rpartFit, branch.lwd=4, branch.col="darkgreen", extra=101) # decision tree의 유용한 시각화
+
+rpartFit # can check estimated splits
+summary(rpartFit) # can check concrete procedure of classification trees
+
+## Example : Gene selection
+sigma = 0.5
+factor = factor(c(rep(1, 10), rep(2, 10), rep(3, 10)))
+levels(factor) = c("ALL1", "ALL2", "AML")
+
+set.seed(123)
+geneA = c(rnorm(20, 0, sigma), rnorm(10, 2, sigma))
+geneB = c(rnorm(10, 0, sigma), rnorm(20, 2, sigma))
+geneC = c(rnorm(30, 1, sigma))
+data = data.frame(factor, geneA, geneB, geneC)
+
+par(mfrow=c(1,3))
+boxplot(geneA ~ factor, main="Gene A", boxwex=0.3, ylab="",
+        col=c("lightblue", "orange", "lightgreen"), xlab="")
+boxplot(geneB ~ factor, main="Gene B", boxwex=0.3, ylab="",
+        col=c("lightblue", "orange", "lightgreen"), xlab="")
+boxplot(geneC ~ factor, main="Gene C", boxwex=0.3, ylab="",
+        col=c("lightblue", "orange", "lightgreen"), xlab="")
+
+## from resultant boxplot,
+## Gene A discriminates well between ALL and AML
+## Gene B discriminates well between ALL1 and ALL2/AML
+## Gene C does not discriminate at all
+
+tapply(geneA, factor, range)
+tapply(geneB, factor, range)
+tapply(geneC, factor, range)
+
+rpartFit = rpart(factor ~ geneA + geneB + geneC, method="class", data=data)
+par(mfrow=c(1,1))
+prp(rpartFit, branch.lwd=4, branch.col="blue", extra=101)
+
+## Example : Classification by jCCND3 gene expression
+data(golub, package="multtest")
+golubFactor = factor(golub.cl, levels=0:1, labels=c("ALL", "AML"))
+ccnd3 = grep("CCND3", golub.gnames[,2], ignore.case=TRUE)
+
+boxplot(golub[ccnd3, ] ~ golubFactor, main="", boxwex=0.3,
+        col=c("lightblue", "orange"), xlab="Type of patients",
+        ylab="Cyclin D3 gene expression")
+tapply(golub[ccnd3, ], golubFactor, range)
+
+gene = golub[ccnd3, ]
+tree = rpart(golubFactor ~ gene, method="class")
+prp(tree, branch.lwd=4, branch.col="blue", extra=101)
+summary(tree)
+
+predict(tree, type="prob")
+predict(tree, type="class")
+pred = predict(tree, type="class")
+table(golubFactor, pred) # pretty well predicted
+
+## Example : Application to the acute lymphoblastic leukemia data
+library(ALL)
+data(ALL)
+
+ALLB123 = ALL[, ALL$BT %in% c("B1", "B2", "B3")]
+ALLB123$BT
+table(ALLB123$BT)
+table(ALL$BT)
+
+names = featureNames(ALL)
+names
+
+BiocManager::install("hgu95av2.db")
+library(hgu95av2.db)
+
+symb = mget(names, env=hgu95av2SYMBOL)
+unlist(symb) # convert list to vector
+unlist(symb)[1:100]
+
+ALLBTnames = ALLB123[names, ]
+dim(ALLBTnames)
+dim(ALL)
+
+probeData = as.matrix(exprs(ALLBTnames))
+row.names(probeData) = unlist(symb)
+probeData[1:20, 1:5]
+
+## Since 12,625 gene expressions is too large, we select the genes p-value samller than 0.00001
+fun = function(x) anova(lm(x ~ ALLB123$BT))$Pr[1]
+anova.pValue = apply(exprs(ALLB123), 1, fun)
+
+ww = anova.pValue < 0.00001
+sum(ww)
+
+diagnosed = factor(ALLBTnames$BT)
+diagnosed
+Data = data.frame(t(probeData[ww, ]))
+dim(Data)
+
+library(rpart)
+library(rpart.plot)
+fit = rpart(diagnosed ~ ., data=Data)
+prp(fit, branch.lwd=4, branch.col="blue", extra=101)
+
+pred = predict(fit, type="class")
+table(diagnosed, pred)
+
+prob = predict(fit, type="prob")
+out = data.frame(prob, predicted=pred, diagnosis=diagnosed)
+out # can compare the predicted probability of each class
+out[pred!=diagnosed, ]
+
+## Generally predictive accuracy is applied to evaluate a classification model
+## It is common practice to split the data two parts: Training set and a Test(Validation) set
+## Construct confusion matrix -> evaluate predictive accuracy
+
+## Example : Separate training and test sets
+set.seed(123)
+train = sample(1:78, 39, replace=FALSE)
+test = setdiff(1:78, train)
+table(diagnosed[train])
+table(diagnosed[test])
+
+fit.tr = rpart(diagnosed ~ ., data=Data, subset=train)
+pred.tr = predict(fit.tr, Data[train, ], type="class")
+table(pred.tr, diagnosed[train])
+mean(pred.tr != diagnosed[train])
+
+pred.te = predict(fit.tr, Data[test, ], type="class")
+table(pred.te, diagnosed[test])
+mean(pred.te != diagnosed[test])
+
+pred.te = predict(fit.tr, Data[test, ], type="class")
+table(pred.te, diagnosed[test])
+mean(pred.te != diagnosed[test])
+
+## Example of Random Forest
+library(ALL)
+data(ALL)
+
+ALLB123 = ALL[, ALL$BT %in% c("B1", "B2", "B3")]
+names = featureNames(ALL)
+ALLBTnames = ALLB123[names, ]
+probeData = as.matrix(exprs(ALLBTnames))
+fun = function(x) anova(lm(x ~ ALLB123$BT))$Pr[1]
+anova.pValue = apply(exprs(ALLB123), 1, fun)
+ww = anova.pValue < 0.00001
+diagnosed = factor(ALLBTnames$BT)
+Data = data.frame(t(probeData[ww, ]))
+
+set.seed(123)
+train = sample(1:78, 39, replace=FALSE)
+test = setdiff(1:78, train)
+
+install.packages("randomForest")
+library(randomForest)
+
+xtr = Data[train, ]
+xte = Data[test, ]
+ytr = diagnosed[train]
+yte = diagnosed[test]
+
+rf1 = randomForest(x=xtr, y=ytr, xtest=xte, ytest=yte, ntree=1000, mtry=1) # mtry : 각 노드 설정 시 설명변수 후보 개수
+rf1$test$confusion
+rf1.conf = rf1$test$confusion[1:3, 1:3]
+1 - sum(diag(rf1.conf)) / sum(rf1.conf)
+
+rf2 = randomForest(x=xtr, y=ytr, xtest=xte, ytest=yte, ntree=1000, mtry=3)
+rf2$test$confusion
+rf2.conf = rf2$test$confusion[1:3, 1:3]
+1 - sum(diag(rf2.conf)) / sum(rf2.conf)
+
+rf3 = randomForest(x=xtr, y=ytr, xtest=xte, ytest=yte, ntree=1000, mtry=3)
+rf3$test$confusion
+rf3.conf = rf3$test$confusion[1:3, 1:3]
+1 - sum(diag(rf3.conf)) / sum(rf3.conf)
