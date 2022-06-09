@@ -306,3 +306,87 @@ rf3 = randomForest(x=xtr, y=ytr, xtest=xte, ytest=yte, ntree=1000, mtry=3)
 rf3$test$confusion
 rf3.conf = rf3$test$confusion[1:3, 1:3]
 1 - sum(diag(rf3.conf)) / sum(rf3.conf)
+
+# Examples of Support Vector Machine
+library(ALL)
+data(ALL)
+
+ALLB123 = ALL[, ALL$BT %in% c("B1", "B2", "B3")]
+names = featureNames(ALL)
+ALLBTnames = ALLB123[names, ]
+probeData = as.matrix(exprs(ALLBTnames))
+fun = function(x) anova(lm(x ~ ALLB123$BT))$Pr[1]
+anova.pValue = apply(exprs(ALLB123), 1, fun)
+ww = anova.pValue < 0.00001 # choose significant feature
+diagnosed = factor(ALLBTnames$BT)
+Data = data.frame(t(probeData[ww, ]), y=diagnosed)
+
+set.seed(123)
+train = sample(1:78, 39, replace=FALSE)
+test = setdiff(1:78, train)
+
+## install.packages("e1071")
+library(e1071)
+
+svmfit = svm(y ~., data=Data[train, ], kernel="linear")
+summary(svmfit)
+
+pred.tr = predict(svmfit, Data[train, ])
+table(pred.tr, Data[train, "y"])
+
+pred.te = predict(svmfit, Data[test, ])
+table(pred.te, Data[test, "y"])
+mean(pred.te != Data[test, "y"])
+
+## cost : 과적합에 대한 비용. 과적합될수록 cost가 상승함 (비용을 감수하더라도 데이터를 훈련데이터에 fitting)
+fit1 = svm(y ~., data=Data[train, ], cost=0.001, kernel="linear")
+fit2 = svm(y ~., data=Data[train, ], cost=0.01, kernel="linear")
+fit3 = svm(y ~., data=Data[train, ], cost=0.1, kernel="linear")
+fit4 = svm(y ~., data=Data[train, ], cost=10, kernel="linear")
+
+pred.te = predict(fit1, Data[test, ])
+table(pred.te, Data[test, "y"])
+mean(pred.te != Data[test, "y"])
+
+pred.te = predict(fit2, Data[test, ])
+table(pred.te, Data[test, "y"])
+mean(pred.te != Data[test, "y"])
+
+pred.te = predict(fit3, Data[test, ])
+table(pred.te, Data[test, "y"])
+mean(pred.te != Data[test, "y"])
+
+pred.te = predict(fit4, Data[test, ])
+table(pred.te, Data[test, "y"])
+mean(pred.te != Data[test, "y"])
+
+set.seed(123)
+## Parameter tuning
+tune.out = tune(svm, y ~., data=Data[train, ], 
+                kernel="linear", ranges=list(cost=c(0.001, 0.01, 0.1, 1, 5, 10, 100)))
+
+summary(tune.out)
+tune.out$best.model
+
+pred = predict(tune.out$best.model, Data[test, ])
+table(pred, Data[test, "y"])
+mean(pred != Data[test, "y"])
+
+set.seed(12)
+tout = tune(svm, y~., data=Data[train, ], kernel="polynomial",
+             ranges=list(cost=c(0.1,1,10,100), degree=c(2,3,4)))
+pred = predict(tout$best.model, Data[test, ])
+table(pred, Data[test, "y"])
+mean(pred != Data[test, "y"])
+
+tout = tune(svm, y~., data=Data[train, ], kernel="radial",
+             ranges=list(cost=c(0.1,1,10,100), gamma=c(0.5,1,2,3)))
+pred = predict(tout$best.model, Data[test, ])
+table(pred, Data[test, "y"])
+mean(pred != Data[test, "y"])
+
+tout = tune(svm, y~., data=Data[train, ], kernel="sigmoid",
+             ranges=list(cost=c(0.1,1,10,100), gamma=c(0.5,1,2,3)))
+pred = predict(tout$best.model, Data[test, ])
+table(pred, Data[test, "y"])
+mean(pred != Data[test, "y"])
