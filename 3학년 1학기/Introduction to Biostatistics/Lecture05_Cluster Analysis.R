@@ -1,0 +1,454 @@
+# Example of Euclidean Distance
+## Distances between Cyclin gene expressions
+data(golub, package="multtest")
+
+cyclins = grep("Cyclin", golub.gnames[,2])
+golub.gnames[cyclins, 2]
+golub[cyclins, ]
+dist.cyclin = dist(golub[cyclins, ], method="euclidian") # Euclidean distance
+dist.cyclin
+
+distanceMatrix = as.matrix(dist.cyclin)
+rownames(distanceMatrix) = golub.gnames[cyclins, 3]
+colnames(distanceMatrix) = golub.gnames[cyclins, 3]
+distanceMatrix[1:5, 1:5]
+
+## Finding the ten genes with expression patterns most similar to the MME gene
+BiocManager::install("genefilter")
+library(genefilter)
+library(ALL)
+data(ALL)
+
+closeto1389_at <- genefinder(ALL, "1389_at", 10, method="euc")
+closeto1389_at
+
+w <- featureNames(ALL)[closeto1389_at[[1]]$indices]
+data.frame(genes=w, distance=closeto1389_at[[1]]$dists)
+
+# Clustering
+## K-means clustering : pre-specified number of clusters.
+## hierarchical clustering : do not now in advance how many clusters
+
+# Details of K-mean Clustering
+## good clustering : within-cluster-variation is as small as possible
+
+# K-means Clustering algorithm
+## K-means algorithm is not guaranteed to give the global minimum.
+
+# Example of the K-means Clustering
+## K-means cluster analysis for 2 patients and 50 genes.
+set.seed(111)
+x1 = matrix(rnorm(100, 0, 0.5), ncol=2)
+x2 = matrix(rnorm(100, 2, 0.5), ncol=2)
+data = rbind(x1, x2)
+
+cl = kmeans(data, 2, nstart=20) # nstart : random number of starting centroid
+cl
+
+plot(data, col=cl$cluster, pch=19, xlab="", ylab="",
+     main="K-Means Clustering Results with K=2")
+points(cl$centers, col=1:2, pch=8, cex=4)
+
+cl = kmeans(data, 3, nstart=20)
+plot(data, col=cl$cluster, pch=19, xlab="", ylab="",
+     main="K-Means Clustering Results with K=3")
+points(cl$centers, col=1:3, pch=8, cex=4)
+
+set.seed(111)
+par(mfrow=c(1,2))
+cl = kmeans(data, 3, nstart=1)
+tv = round(cl$tot.withinss, 3)
+plot(data, col=cl$cluster, pch=19, xlab="", ylab="",
+     main=paste("(", tv, ")"))
+points(cl$centers, col=1:3, pch=8, cex=4)
+
+cl = kmeans(data, 3, nstart=20)
+tv = round(cl$tot.withinss, 3)
+plot(data, col=cl$cluster, pch=19, xlab="", ylab="",
+     main=paste("(", tv, ")"))
+points(cl$centers, col=1:3, pch=8, cex=4)
+
+## Application to the Golub data.
+par(mfrow=c(1,1))
+data(golub, package="multtest")
+zyxin = grep("Zyxin", golub.gnames[, 2])
+ccnd3 = grep("CCND3", golub.gnames[, 2])
+data = data.frame(golub[ccnd3, ], golub[zyxin, ])
+colnames(data) = c("CCND3 (Cyclin D3)", "Zyxin")
+
+cl = kmeans(data, 2, nstart=20)
+cbind(cl$cluster, golub.cl)
+
+plot(data, col=cl$cluster, pch=19, xlab="", ylab="")
+points(cl$centers, col=1:2, pch=8, cex=4)
+
+par(mfrow=c(1, 3))
+cl = kmeans(data, 2, nstart=20)
+plot(data, col=cl$cluster, pch=19, xlab="", ylab="",
+     main="K = 2")
+points(cl$centers, col=1:2, pch=8, cex=4)
+
+cl = kmeans(data, 3, nstart=20)
+plot(data, col=cl$cluster, pch=19, xlab="", ylab="",
+     main="K = 3")
+points(cl$centers, col=1:3, pch=8, cex=4)
+
+cl = kmeans(data, 4, nstart=20)
+plot(data, col=cl$cluster, pch=19, xlab="", ylab="",
+     main="K = 4")
+points(cl$centers, col=1:4, pch=8, cex=4)
+
+# Hierarchical Clustering
+## Hierarchical clustering does not require pre-spcify the number of clusters K.
+## tree-based dendrogram
+
+# Dissimilarity of Clusters
+## Dissimilarity between pairs of observations can be measured by Euclidean distance.
+## The concept of dissimilarity needs to be extended to a pair of groups of observations-developing the notion of linkage.
+
+# Types of Linkage
+## Complete linkage : Maximal inter-cluster dissimilarity.
+## Single linkage : Minimal inter-cluster dissimlarity.
+## Average linkage : Mean inter-cluster dissimilarity.
+## Above linkage are based on pair-wise method.
+
+## Centroid linkage : Dissimilarity between the centroid for cluster A and B.
+
+# Example of Single Linkage
+## Single linkage with 5 genes.
+names = list(c("g1", "g2", "g3", "g4", "g5"), c("patient 1", "patient 2"))
+sl = matrix(c(1, 1, 1, 1.3, 3, 2, 3, 2.4, 5, 5), ncol=2, byrow=TRUE, dimnames=names)
+
+rr = c(0, 6)
+par(mfrow=c(1,1))
+plot(sl, pch=19, col="blue", cex=1.5, xlim=rr, ylim=rr)
+text(sl, labels=row.names(sl), pos=4, col="red", cex=1.2)
+print(dist(sl, method="euclidian"), digits=3)
+
+ds = dist(sl, method="euclidean")
+sl.out = hclust(ds, method="single") # single linkage
+sl.out
+
+## Dendrogram!
+plot(sl.out, lwd=3, col="blue", col.axis = "brown",
+     hang=-1, main=NA, sub=NA, axes=FALSE, ylab="Distance",
+     xlab="Clustering of the expression of 5 genes")
+axis(side=2, at=seq(0,3.5,.5), col="brown", labels=TRUE, lwd=4)
+
+# Example of Random Data
+set.seed(12345)
+x = rnorm(20)
+out = hclust(dist(x, method="euclidean"), method="single")
+
+plot(out, lwd=3, col="blue", hang=-1, main=NA, sub=NA, axes=FALSE, ylab="Distance",
+     xlab="20 genes with normal random distances")
+axis(side=2, at=seq(0, 1.4, .2), col="brown", labels=TRUE, lwd=4)
+
+## This example highlights an important caveat (실제로는 같은 분포에서 뽑았기 떄문에 clustering이 의미없어야함)
+## If data are generated by different dist, different processes will be produced.
+set.seed(4321)
+x = c(rnorm(10, 0, 0.1), rnorm(10, 3, 0.5), rnorm(10, 10, 1.0))
+out = hclust(dist(x, method="euclidean"), method="single")
+
+
+plot(out, lwd=3, col="blue", hang=-1, main=NA, sub=NA,
+     axes=FALSE, ylab="Distance",
+     xlab="3 clusters of 10 genes each")
+axis(side=2, at=seq(0, 5, 1), col="brown", labels=TRUE, lwd=4)
+abline(h=1, lty=2, lwd=2, col="gray")
+
+## We can see that there clearly exist three clusters.
+
+## Application to the Golub data.
+data(golub, package="multtest")
+zyxin = grep("Zyxin", golub.gnames[ , 2])
+ccnd3 = grep("CCND3", golub.gnames[ , 2])
+
+clusdata = data.frame(golub[ccnd3, ], golub[zyxin, ])
+colnames(clusdata) = c("CCND3 Cyclin D3", "Zyxin")
+gfactor = factor(golub.cl, levels=0:1, labels=c("ALL", "AML"))
+
+gf = as.numeric(gfactor)
+plot(clusdata, pch=gf+15, col=gf+1)
+legend("topright", legend=c("ALL", "AML"), pch=16:17, col=c(2, 3))
+
+dist.cl = dist(clusdata, method="euclidean")
+gcl = hclust(dist.cl, method="single")
+
+plot(gcl, lwd=3, col="blue", hang=-1, main=NA, sub=NA,
+     axes=FALSE, ylab="Distance",
+     xlab="Clustering of patients by gene expression")
+axis(side=2, at=seq(0,1.2,.2), col="brown", labels=TRUE, lwd=4)
+abline(h=0.6, lty=2, lwd=2, col="gray")
+
+sort(rev(gcl$order)[1:9])
+which(gfactor=="AML")
+
+par(mfrow=c(2,2))
+hc1 = hclust(dist.cl, method="single")
+plot(hc1, main="Single Linkage", xlab="", sub="", hang=-1)
+abline(h=0.6, lty=2, col="blue")
+
+hc2 = hclust(dist.cl, method="complete")
+plot(hc2, main="Complete Linkage", xlab="", sub="", hang=-1)
+abline(h=3, lty=2, col="orange")
+
+hc3 = hclust(dist.cl, method="average")
+plot(hc3, main="Average Linkage", xlab="", sub="", hang=-1)
+abline(h=2.0, lty=2, col="green")
+
+hc4 = hclust(dist.cl, method="centroid")
+plot(hc4, main="Centroid Linkage", xlab="", sub="", hang=-1)
+abline(h=1, lty=2, col="purple")
+
+## Apart from three misplaced patients, the tree contains two main clusters that correctly correspond to the two groups.
+
+# Heatmap
+data(golub, package="multtest")
+gFactor = factor(golub.cl, levels=0:1, labels=c("ALL", "AML"))
+
+meanALL = apply(golub[ , gFactor=="ALL"], 1, mean)
+meanAML = apply(golub[ , gFactor=="AML"], 1, mean)
+
+o = order(abs(meanALL - meanAML), decreasing=TRUE)
+DE50 = golub[o[1:50], ]
+par(mfrow=c(1,1))
+hist(DE50, nclass=50, col="orange") # Top 50 which is far from mean
+
+## Highly expressed genes are colored in red / lowly expressed genes in green.
+install.packages("gplots")
+library(gplots)
+heatmap.2(DE50, Rowv=NA, Colv=NA, scale="row", cexRow=0.5,
+          col=greenred(75), dendrogram="none", key=TRUE,
+          symkey=FALSE, density.info="none", trace="none")
+
+## Next, we enhance our "Top 50 Genes" heatmap by performing heirarchical clustering on both rows and columns.
+heatmap.2(DE50, scale="row", col=greenred(75),
+          dendrogram="both", key=TRUE, symkey=FALSE,
+          density.info="none", trace="none", cexRow=0.5) # dendrogram="both" vs "none"
+
+# Test for The Correlation Coefficient
+## A statistical test is based on Pearson's correlation coefficient.
+## The sampling dist follows a Student's t-dist with degrees of freedom n-2.
+## permutations test / bootstrap confidence interval can be constructed.
+
+# Example of The Correlation Coeefficient
+## MCM3 gene expression.
+data(golub, package="multtest")
+mcm3 = grep("MCM3", golub.gnames[, 2])
+
+golub.gnames[mcm3, ]
+x = golub[mcm3[1], ]
+y = golub[mcm3[2], ]
+
+cor(x, y)
+plot(x, y, pch=19, col="blue3")
+abline(lm(y ~ x)$coef, col=2, lty=2, lwd=2)
+cor.test(x, y) # H0 : 상관계수=0 을 기각
+
+## permutation test
+B = 10000
+per.cor = NULL
+
+set.seed(1010)
+for (i in 1:B) {
+  index1 =  sample(1:length(x))
+  index2 = sample(1:length(y))
+  per.cor[i] = cor(x[index1], y[index2])
+}
+
+hist(per.cor, nclass=50, col="orange")
+c0 = cor(x, y)
+abline(v=c(-c0, c0), lty=2, lwd=2, col="blue")
+
+(sum(abs(per.cor) > abs(c0)) + 1) / (B + 1) # p-value
+
+## Bootstrap (n이 커야, 즉 초기 샘플의 수가 많아야 Bootstrap 의 효과가 좋다.)
+B = 10000
+boot.cor = rep(0, B)
+data = cbind(x, y)
+
+set.seed(1)
+for (i in 1:B) {
+  index = sample(1:nrow(data), replace=TRUE)
+  dat.star = data[index, ]
+  boot.cor[i] = cor(dat.star)[1, 2]
+}
+
+hist(boot.cor, nclass=50, col="orange")
+CI = quantile(boot.cor, c(0.025, 0.975))
+abline(v=CI, lty=2, lwd=2, col="blue")
+
+mean(boot.cor)
+CI
+
+## Application to the Golub data.
+y = golub.cl
+y
+
+corgol = apply(golub, 1, function(x) cor(x, y))
+o = order(abs(corgol), decreasing=TRUE)
+
+top = 10
+ot = o[1:top]
+data.frame(genes=golub.gnames[ot, 3], cor=corgol[ot])
+
+fun = function(x) summary(lm(x ~ y))$fstat[1] # overall F-test : H0: beta_1 = 0, F-statistic high => reject H0
+fstat = apply(golub, 1, fun)
+o2 = order(fstat, decreasing=TRUE)
+
+top = 10
+ot2 = o2[1:top]
+data.frame(genes=golub.gnames[ot2, 3], f.stat=fstat[ot2])
+
+## Result are same as correlation ranking.
+
+par(mfrow=c(1, 2))
+hist(corgol, nclass=20, col="orange", xlab="", main="PCC")
+hist(fstat, nclass=20, col="lightblue", xlab="",
+     main="F test statistic")
+
+## different distribution, but same ranking
+
+# Principal Components Analysis
+## PCA : low-dimensional representation of the data that captures as much of the information as possible.
+## PCA also serves as a tool for data visualization
+## linear combination of the p features
+
+# Computation of Principal Components
+## We are only interested in variance -> X has been centered to have mean zero
+
+# Visualization of PCA
+## PCA is a descriptive method to analyze dependencies between variables.
+## Cluster analysis on the component scores of the principal components is often useful. (비슷한 주성분 점수를 갖는 개체끼리)
+
+# Another Interpretation of Principal Components
+## X will give their information to M principal component.
+## Then we are interested in which component did X give the most information to?
+
+# Proportion Variance Explained
+## To understand the strength of each component, we need to know the proportion of variance explained(PVE).
+## no well-accepted objective way to devide num of PC.
+## Elbow point in the scree plot is inherently ad hoc.
+
+# Example of PCA
+## Calculating eigenvectors and eigenvalues.
+V1 = c(1.63, -0.40, 0.93, -1.38, -0.17, -0.61)
+V2 = c(1.22, 0.79, 0.97, -1.08, -0.96, -0.93)
+par(mfrow=c(1,1))
+plot(V1, V2, xlim=c(-2, 2), ylim=c(-2, 2), col="red", pch=15)
+
+Z = matrix(c(V1, V2), nrow=6, byrow=FALSE)
+cor(Z)
+
+e = eigen(cor(Z))
+e
+
+Z %*% e$vec[,1]
+Score = Z %*% e$vec
+colnames(Score) = c("PC1", "PC2")
+Score
+
+## Using built-in function.
+pca = princomp(Z, cor=TRUE)
+pca$scores
+pca$loadings
+
+pvar = pca$sdev^2
+pvar
+pve = pvar/sum(pvar)
+pve # strength of principal component
+
+## 분산이 큰 축일수록 정보가 많은 이유 -> 포인트의 퍼짐이 원본 데이터를 잘 복원한다고 할 수 있기 때문이다.
+
+## Application to the Golub data.
+data(golub, package="multtest")
+cgolub = cor(golub)
+dim(cgolub)
+
+e = eigen(cgolub)
+dim(e$vector)
+e$values
+
+
+plot(e$values, type="b", pch=19, col=2, ylab="eigenvalues",
+     xlab="the number of components")
+
+## bootstrap C.I for the eigenvalues.
+n = ncol(golub)
+p = nrow(golub)
+B = 10000
+
+set.seed(10101)
+eval = matrix(0, B, n)
+for (i in 1:B) {
+  index = sample(1:p, replace=TRUE)
+  boot = golub[index,]
+  eval[i, ] = eigen(cor(boot))$values
+}
+
+CI = apply(eval, 2, function(t) quantile(t, c(0.025, 0.975)))
+t(CI)
+
+## 4-th eigenvalue less than 1 means 4-th eigenvalue represents less variance than an individual variable.
+
+# Example of Biplot
+## Biplot displays both the principal component scores and the principal component loadings.
+biplot(princomp(golub, cor=TRUE), pc.biplot=TRUE, cex=0.5,
+       expand=0.8, xlab="Component 1", ylab="Component 2")
+
+gFactor = factor(golub.cl, levels=0:1, labels=c("ALL","AML"))
+meanALL = apply(golub[ ,gFactor=="ALL"], 1, mean)
+meanAML = apply(golub[ ,gFactor=="AML"], 1, mean)
+o = order(abs(meanALL - meanAML), decreasing=TRUE)
+DE50 = golub[o[1:50], ]
+
+g50 = princomp(DE50, cor=TRUE)
+biplot(g50, pc.biplot=TRUE, cex=0.5, expand=0.8,
+       xlab="Component 1", ylab="Component 2")
+abline(v=0, col="grey", lty=2)
+abline(h=0, col="grey", lty=2)
+
+# Example of Clustering with PCA
+## Genes critical for S-phase.
+golubFactor = factor(golub.cl)
+o1 = grep("CD", golub.gnames[ ,2])
+o2 = grep("Op", golub.gnames[ ,2])
+o3 = grep("MCM", golub.gnames[ ,2])
+o = c(o1, o2, o3)
+length(o)
+
+fun = function(x) t.test(x ~ golubFactor)$p.value
+pt = apply(golub[o, ], 1, fun)
+oo = o[pt < 0.01]
+length(oo)
+
+## we use the scores on the first two PC.
+pca = princomp(golub)
+leu = data.frame(pca$scores[oo, 1:2], row.names=oo)
+
+plot(leu, xlim=c(-10, 15), ylim=c(-10, 10), pch=19, cex=1.2,
+     xlab="Principal Component 1", ylab="Principal Component 2",
+     col="darkgreen")
+text(x=leu[, 1], y=leu[ ,2], labels=rownames(leu), pos=1,
+     col="blue", cex=0.6)
+abline(h=0, col="grey", lty=2)
+abline(v=0, col="grey", lty=2)
+
+fac = rep(1, length(oo))
+fac[oo %in% o2] = 2
+fac[oo %in% o3] = 3
+text(x = leu[, 1], y=leu[, 2], labels=fac, pos=3, col="red")
+
+# Hierarchical Cluster using PCA
+dist = dist(leu, method="euclidean")
+cl = hclust(dist, method="single")
+
+x11()
+plot(cl, lwd=3, col="blue", col.axis = "brown", ylab="Distance",
+     xlab="Clustering of the expression of genes",
+     hang=-1, main=NA, sub=NA, axes=FALSE)
+axis(side=2, at=seq(0,5,1), col="brown", labels=TRUE, lwd = 4)
+
+a = as.integer(rownames(leu)[cl$order])
+golub.gnames[a, 2]
